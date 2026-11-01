@@ -186,7 +186,7 @@
     // weaker questions first, with randomness
     return shuffle(ids).sort((a, b) => mastery(a) - mastery(b) + (Math.random() - 0.5) * 0.4).slice(0, n);
   }
-  function diagnosticIds() { return ORDER.flatMap((s) => SUBJ[s].topics.map((t) => t.qids[Math.floor(Math.random() * t.qids.length)])); }
+  function diagnosticIds() { return ORDER.flatMap((s) => shuffle(SUBJ[s].topics).slice(0, 6).map((t) => t.qids[Math.floor(Math.random() * t.qids.length)])); }
   function examIds(s, n) {
     const subs = s === "all" ? ORDER : [s];
     return subs.flatMap((x) => {
