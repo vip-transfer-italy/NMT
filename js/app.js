@@ -172,14 +172,14 @@
     if (!o.ids.length) { toast("Немає завдань для цього режиму"); return; }
     S = Object.assign({ mode: "learn" }, o, { items: o.ids.map(prepItem), i: 0, startedAt: Date.now(), xp: 0, finished: false });
     if (S.limit) S.endsAt = Date.now() + S.limit * 1000;
-    go("#/session");
+    go("#session");
   }
   function sessionFromTask(t) {
     if (t.kind === "review") return startSession({ kind: "review", title: "Повторення", ids: dueIds().slice(0, 15), taskId: t.id });
-    if (t.kind === "theory") return go(`#/t/${t.subj}/${t.topic}`);
+    if (t.kind === "theory") return go(`#t-${t.subj}-${t.topic}`);
     if (t.kind === "practice") return startSession({ kind: "practice", title: TOPIC[t.subj + "/" + t.topic].title, ids: shuffle(TOPIC[t.subj + "/" + t.topic].qids), taskId: t.id, subj: t.subj });
     if (t.kind === "mixed") return startSession({ kind: "mixed", title: SUBJ[t.subj].name + ": мікс", ids: mixedIds(t.subj, 10), taskId: t.id, subj: t.subj });
-    if (t.kind === "mock") return go("#/exam");
+    if (t.kind === "mock") return go("#exam");
   }
   function mixedIds(s, n) {
     const ids = s ? subjQids(s) : ORDER.flatMap(subjQids);
@@ -258,9 +258,9 @@
 
   function render() {
     applyTheme();
-    const h = location.hash || "#/";
-    const parts = h.slice(2).split("/");
-    if (!st.profile.onboarded && parts[0] !== "welcome") return go("#/welcome");
+    const h = (location.hash || "#home").slice(1).replace(/^\//, "").replace(/\//g, "-");
+    const parts = h.split("-");
+    if (!st.profile.onboarded && parts[0] !== "welcome") return go("#welcome");
     if (parts[0] !== "session") { clearInterval(timerId); if (S && !S.finished && S.mode === "learn") S = null; }
     let html, tab = parts[0] || "home";
     switch (parts[0]) {
@@ -273,7 +273,7 @@
       case "exam": html = vExam(); break;
       case "stats": html = vStats(); break;
       case "tips": html = vTips(); tab = "home"; break;
-      case "settings": html = vSettings(); break;
+      case "prefs": html = vSettings(); tab = "settings"; break;
       case "welcome": html = vWelcome(); tab = "welcome"; break;
       default: html = vHome(); tab = "home";
     }
@@ -331,10 +331,10 @@ ${fresh ? `
   ${done === plan.length && plan.length ? `<div class="done-box">🎉 План на сьогодні виконано! Можеш відпочити або взяти бонус. <button class="btn small" data-act="bonus">+ Бонусне тренування</button></div>` : ""}
 </section>
 <section class="card">
-  <div class="card-h"><h2>Прогноз балів НМТ</h2><a href="#/stats" class="muted">детальніше ›</a></div>
+  <div class="card-h"><h2>Прогноз балів НМТ</h2><a href="#stats" class="muted">детальніше ›</a></div>
   <div class="score-grid">
   ${ORDER.map((s) => { const x = subjStats(s); return `
-    <a class="score" href="#/s/${s}" style="--c:${SUBJ[s].color}">
+    <a class="score" href="#s-${s}" style="--c:${SUBJ[s].color}">
       <div class="score-top"><span>${SUBJ[s].icon} ${SUBJ[s].short}</span><b>${x.seen >= 3 ? x.score : "—"}</b></div>
       <div class="bar goal"><span style="width:${x.m * 100}%;background:${SUBJ[s].color}"></span><i style="left:70%"></i></div>
       <small class="muted">${x.done}/${x.topics} тем · ціль 170+</small>
@@ -342,7 +342,7 @@ ${fresh ? `
   </div>
   <p class="tiny muted">Прогноз рахується за твоїми відповідями в нашому банку завдань і за тим, наскільки міцно ти їх запам'ятав. Позначка на шкалі = 170 балів.</p>
 </section>
-<a class="card link-card" href="#/tips"><span class="cta-ico">🧠</span><span class="grow"><b>Як скласти НМТ: стратегія і лайфхаки</b><small class="muted">Що робити на самому тесті, щоб не втратити жодного бала</small></span><span class="arrow">›</span></a>
+<a class="card link-card" href="#tips"><span class="cta-ico">🧠</span><span class="grow"><b>Як скласти НМТ: стратегія і лайфхаки</b><small class="muted">Що робити на самому тесті, щоб не втратити жодного бала</small></span><span class="arrow">›</span></a>
 `;
   }
   const taskIcon = (t) => ({ review: "🔁", theory: "📖", practice: "✏️", mixed: "🎲", mock: "⏱️" }[t.kind]);
@@ -350,7 +350,7 @@ ${fresh ? `
   function vSubjects() {
     return `<h1 class="page-h">Предмети</h1>
 <div class="subj-grid">${ORDER.map((s) => { const x = subjStats(s); return `
-  <a class="card subj" href="#/s/${s}" style="--c:${SUBJ[s].color}">
+  <a class="card subj" href="#s-${s}" style="--c:${SUBJ[s].color}">
     <div class="subj-ico">${SUBJ[s].icon}</div>
     <div class="grow"><h2>${SUBJ[s].name}</h2><small class="muted">${SUBJ[s].required ? "обов'язковий" : "предмет на вибір"} · ${x.done}/${x.topics} тем пройдено</small>${bar(x.m, SUBJ[s].color)}</div>
     <div class="subj-score"><b>${x.seen >= 3 ? x.score : "—"}</b><small>прогноз</small></div>
@@ -360,7 +360,7 @@ ${fresh ? `
   function vSubject(s) {
     const sub = SUBJ[s]; if (!sub) return vSubjects();
     const x = subjStats(s);
-    return `<a href="#/subjects" class="back">‹ Предмети</a>
+    return `<a href="#subjects" class="back">‹ Предмети</a>
 <h1 class="page-h">${sub.icon} ${sub.name}</h1>
 <div class="card row-actions">
   <div class="grow"><b>Прогноз: ${x.seen >= 3 ? x.score : "—"}</b><small class="muted">${x.done}/${x.topics} тем · ${x.seen}/${x.total} завдань спробовано</small>${bar(x.m, sub.color)}</div>
@@ -368,7 +368,7 @@ ${fresh ? `
   <button class="btn primary" data-act="exam" data-s="${s}">⏱️ Тест</button>
 </div>
 <ul class="topic-list">${sub.topics.map((t, i) => { const ts = topicStats(s, t.id); const dn = topicDone(s, t.id); return `
-  <li><a class="card topic" href="#/t/${s}/${t.id}">
+  <li><a class="card topic" href="#t-${s}-${t.id}">
     <span class="num ${dn ? "ok" : ts.read ? "half" : ""}">${dn ? "✓" : i + 1}</span>
     <span class="grow"><b>${t.title}</b><small class="muted">${dn ? "пройдено" : ts.read ? "теорію прочитано" : "нова тема"} · ${t.qids.length} завдань · ~${t.minutes} хв</small>${bar(ts.m, sub.color)}</span>
     <span class="arrow">›</span>
@@ -377,7 +377,7 @@ ${fresh ? `
 
   function vTopic(s, tid) {
     const t = TOPIC[s + "/" + tid]; if (!t) return vSubjects();
-    return `<a href="#/s/${s}" class="back">‹ ${SUBJ[s].name}</a>
+    return `<a href="#s-${s}" class="back">‹ ${SUBJ[s].name}</a>
 <article class="card theory">
   ${chip(s)}
   <h1>${t.title}</h1>
@@ -552,7 +552,7 @@ ${st.tests.slice(0, 15).map((t) => `<tr><td>${t.date.slice(5).split("-").reverse
   }
 
   function vTips() {
-    return `<a href="#/" class="back">‹ Головна</a>
+    return `<a href="#home" class="back">‹ Головна</a>
 <h1 class="page-h">🧠 Як скласти НМТ на максимум</h1>
 <div class="card theory">
 <h3>На самому тесті</h3>
@@ -651,16 +651,17 @@ ${st.tests.slice(0, 15).map((t) => `<tr><td>${t.date.slice(5).split("-").reverse
     enext: () => { if (S.i < S.items.length - 1) { S.i++; render(); } else confirmFinish(); },
     jump: (d) => { S.i = +d.v; render(); },
     quit: () => {
-      if (S.mode === "exam" && !S.finished) { if (confirm("Вийти з тесту? Результат не збережеться.")) { clearInterval(timerId); S = null; go("#/exam"); } return; }
+      if (S.mode === "exam" && !S.finished) { ask("Вийти з тесту?", "Результат цієї спроби не збережеться.", "Вийти").then((y) => { if (y) { clearInterval(timerId); S = null; go("#exam"); } }); return; }
       const n = S.items.filter((i) => i.checked).length;
-      if (n > 0 && n < S.items.length && !confirm("Вийти? Відповіді, які ти вже дав, збережено.")) return;
-      S = null; go("#/");
+      const leave = () => { S = null; go("#home"); };
+      if (n > 0 && n < S.items.length) ask("Вийти з тренування?", "Відповіді, які ти вже дав, збережено.", "Вийти").then((y) => y && leave());
+      else leave();
     },
-    home: () => { S = null; go("#/"); },
+    home: () => { S = null; go("#home"); },
     retry: () => { const ids = S.items.filter((i) => !i.ok).map((i) => i.id); S = null; startSession({ kind: "review", title: "Робота над помилками", ids: shuffle(ids) }); },
     wnext: () => { const n = $("#w-name"), dt = $("#w-date"); if (n) st.profile.name = n.value.trim().slice(0, 30); if (dt && dt.value) st.profile.examDate = dt.value; wStep++; save(); render(); },
     wmin: (d) => { st.profile.minutes = +d.v; save(); render(); },
-    wdone: () => { st.profile.onboarded = true; save(); go("#/"); },
+    wdone: () => { st.profile.onboarded = true; save(); go("#home"); },
     saveSettings: () => {
       const p = st.profile;
       p.name = $("#f-name").value.trim().slice(0, 30);
@@ -676,12 +677,12 @@ ${st.tests.slice(0, 15).map((t) => `<tr><td>${t.date.slice(5).split("-").reverse
       a.download = `nmt-progress-${today()}.json`;
       a.click();
     },
-    reset: () => { if (confirm("Точно видалити весь прогрес? Це не можна скасувати.")) { st = defaults(); save(); wStep = 0; go("#/welcome"); } },
+    reset: () => ask("Видалити весь прогрес?", "Це не можна скасувати.", "Видалити").then((y) => { if (y) { st = defaults(); save(); wStep = 0; go("#welcome"); } }),
   };
   function confirmFinish() {
     const left = S.items.filter((i) => !answered(i)).length;
-    if (left && !confirm(`Без відповіді ${left} ${plural(left, "питання", "питання", "питань")}. Порада: на НМТ краще відповісти навмання, ніж залишити порожнім. Все одно завершити?`)) return;
-    finishSession();
+    if (!left) return finishSession();
+    ask(`Без відповіді ${left} ${plural(left, "питання", "питання", "питань")}`, "Порада: на НМТ краще відповісти навмання, ніж залишити порожнім, бо за помилку бали не знімають.", "Все одно завершити", "Повернутись").then((y) => y && finishSession());
   }
   function startTimer() {
     clearInterval(timerId);
@@ -709,7 +710,7 @@ ${st.tests.slice(0, 15).map((t) => `<tr><td>${t.date.slice(5).split("-").reverse
     }
   });
   document.addEventListener("keydown", (e) => {
-    if (!S || S.finished || location.hash !== "#/session") return;
+    if (!S || S.finished || location.hash !== "#session") return;
     const it = S.items[S.i];
     if (e.key === "Enter") { e.preventDefault(); if (S.mode === "exam") ACT.enext(); else if (it.checked) nextItem(); else checkCurrent(); return; }
     if (it.q.t === "single" && !(it.checked && S.mode === "learn") && document.activeElement.tagName !== "INPUT") {
@@ -727,6 +728,15 @@ ${st.tests.slice(0, 15).map((t) => `<tr><td>${t.date.slice(5).split("-").reverse
   });
 
   /* ================= FX ================= */
+  function ask(title, text, okLabel, cancelLabel = "Скасувати") {
+    return new Promise((res) => {
+      const m = document.createElement("div");
+      m.className = "modal";
+      m.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true"><h2>${esc(title)}</h2><p class="muted">${esc(text)}</p><div class="row-btns"><button class="btn" data-m="0">${esc(cancelLabel)}</button><button class="btn primary" data-m="1">${esc(okLabel)}</button></div></div>`;
+      m.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b || e.target === m) { e.stopPropagation(); m.remove(); res(!!(b && b.dataset.m === "1")); } });
+      document.body.appendChild(m);
+    });
+  }
   function toast(msg) {
     const t = document.createElement("div");
     t.className = "toast"; t.textContent = msg;
