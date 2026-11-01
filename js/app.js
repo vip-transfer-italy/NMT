@@ -424,7 +424,7 @@ ${fresh ? `
         </div></div>`;
     } else if (q.t === "order") {
       body = `<div class="order">
-        <p class="muted small">Натискай події по черзі: від найдавнішої до найпізнішої.</p>
+        <p class="muted small">${q.hint || (q.subj === "history" ? "Натискай події по черзі: від найдавнішої до найпізнішої." : "Натискай варіанти по черзі в правильному порядку.")}</p>
         <div class="ord-items">${it.perm.map((oi) => {
           const pos = it.user.indexOf(oi);
           let cls = pos >= 0 ? "sel" : "";
