@@ -406,7 +406,6 @@ ${fresh ? `
     } else if (q.t === "open") {
       const cls = it.checked && !exam ? (it.ok ? "right" : "wrong") : "";
       body = `<div class="open"><input id="open-input" class="${cls}" inputmode="decimal" autocomplete="off" placeholder="Твоя відповідь" value="${esc(it.user)}" ${it.checked && !exam ? "disabled" : ""}>
-      ${it.checked && !exam && !it.ok ? `<div class="answer">Правильна відповідь: <b>${q.a[0].replace(".", ",")}</b></div>` : ""}
       <small class="muted">Десятковий дріб пиши через кому: 1,5</small></div>`;
     } else if (q.t === "match") {
       body = `<div class="match">
@@ -432,13 +431,12 @@ ${fresh ? `
           return `<button class="ord ${cls}" data-act="opick" data-v="${oi}" ${it.checked && !exam ? "disabled" : ""}><span class="let">${pos >= 0 ? pos + 1 : ""}</span><span>${q.items[oi]}</span></button>`;
         }).join("")}</div>
         ${it.user.length && !it.checked ? `<button class="btn small ghost" data-act="oreset">↺ Почати спочатку</button>` : ""}
-        ${it.checked && !exam && !it.ok ? `<div class="answer">Правильно: ${q.items.map((x, i) => `<b>${i + 1}.</b> ${x}`).join(" → ")}</div>` : ""}
       </div>`;
     }
     const fb = it.checked && !exam ? `
       <div class="feedback ${it.ok ? "ok" : "bad"}">
         <div class="fb-h">${it.ok ? pick(["Супер! 💪", "Правильно! ✨", "Так тримати! 🔥", "Влучно! 🎯", "Красава! 👏"]) : pick(["Не біда, запам'ятаймо 👇", "Майже! Ось як правильно 👇", "Помилка теж корисна 👇"])}</div>
-        <p>${q.e || ""}</p>
+        ${it.ok ? `<p>${q.e || ""}</p>` : whyBlock(it)}
         ${!it.ok ? `<small class="muted">Це завдання повернеться в «Повторення», щоб ти точно його запам'ятав.</small>` : ""}
       </div>` : "";
     const canCheck = answered(it);
@@ -482,12 +480,37 @@ ${fresh ? `
   ${S.mode === "exam" ? `<div class="card big-score"><small class="muted">Орієнтовний бал за шкалою НМТ</small><b>${Math.round(100 + 100 * pct)}</b></div>` : ""}
   <div class="pill">+${S.xp} XP</div>
   ${wrong.length ? `<div class="card"><h2>Розбір помилок</h2>${wrong.map((it) => `
-    <div class="mistake">${chip(it.q.subj)}<p><b>${it.q.q}</b></p><p class="ok-txt">✓ ${correctText(it.q)}</p>${it.q.e ? `<p class="muted small">${it.q.e}</p>` : ""}</div>`).join("")}</div>` : ""}
+    <div class="mistake">${chip(it.q.subj)}<p><b>${it.q.q}</b></p>${whyBlock(it)}</div>`).join("")}</div>` : ""}
   <div class="row-btns">
     <button class="btn primary big" data-act="home">На головну</button>
     ${wrong.length ? `<button class="btn big" data-act="retry">🔁 Повторити помилки</button>` : ""}
   </div>
 </div>`;
+  }
+  // Why the learner's answer is wrong: what they chose, why not, what is right, and the explanation.
+  function whyBlock(it) {
+    const q = it.q;
+    const rows = [];
+    const has = answered(it);
+    if (q.t === "single") {
+      if (!has) rows.push(`<div class="why-row you">Без відповіді</div>`);
+      else {
+        const list = (NMT.why || {})[q.id];
+        const k = it.user > q.a ? it.user - 1 : it.user;
+        const reason = list && list[k];
+        rows.push(`<div class="why-row you">✗ Ти обрав: <b>${q.o[it.user]}</b>${reason ? `<span class="why-reason">Чому ні: ${reason}</span>` : ""}</div>`);
+      }
+    } else if (q.t === "open") {
+      rows.push(`<div class="why-row you">✗ ${has ? `Ти написав: <b>${esc(it.user)}</b>` : "Без відповіді"}</div>`);
+    } else if (q.t === "match") {
+      const bad = q.l.map((x, i) => (it.user[i] === q.a[i] ? "" : `<li><b>${i + 1}. ${x}</b> → ${it.user[i] === null ? "без відповіді" : `${L[it.user[i]]} «${q.r[it.user[i]]}» ✗`}, а треба <b>${L[q.a[i]]} «${q.r[q.a[i]]}»</b></li>`)).filter(Boolean);
+      rows.push(`<div class="why-row you">✗ Неправильні пари:<ul>${bad.join("")}</ul></div>`);
+    } else if (q.t === "order") {
+      rows.push(`<div class="why-row you">✗ Твій порядок: ${has ? it.user.map((v) => q.items[v]).join(" → ") : "не завершено"}</div>`);
+    }
+    if (q.t !== "match") rows.push(`<div class="why-row ok-txt">✓ Правильно: <b>${correctText(q)}</b></div>`);
+    if (q.e) rows.push(`<p class="why-expl">💡 ${q.e}</p>`);
+    return `<div class="why">${rows.join("")}</div>`;
   }
   function correctText(q) {
     if (q.t === "single") return q.o[q.a];

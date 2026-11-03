@@ -279,3 +279,10 @@ body.bare main { padding-bottom: 24px; }
 .modal { position: fixed; inset: 0; background: rgba(10,12,20,.5); display: grid; place-items: center; z-index: 60; padding: 20px; animation: pop .2s; }
 .modal-box { background: var(--card); border-radius: 20px; padding: 22px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
 .modal-box .row-btns { margin-top: 14px; }
+.why { display: grid; gap: 8px; margin-top: 8px; }
+.why-row { padding: 10px 12px; border-radius: 10px; background: var(--card); line-height: 1.45; }
+.why-row ul { margin: 6px 0 0; padding-left: 1.1em; }
+.why-row li { margin: 4px 0; }
+.why-reason { display: block; margin-top: 4px; color: var(--muted); }
+.why-expl { margin: 2px 0 0; }
+.feedback .why-row { background: color-mix(in srgb, var(--card) 85%, transparent); }
